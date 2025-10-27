@@ -1,0 +1,123 @@
+import os
+import json
+import faiss
+import numpy as np
+from typing import List, Any
+from openai import OpenAI
+from chunker import KnowledgeChunk
+from settings import Settings
+
+class QwenEmbedder:
+    """使用Qwen大模型进行文本嵌入"""
+    def __init__(self, api_key: str):
+        self.api_key = api_key
+        self.client = OpenAI(
+            api_key=api_key,
+            base_url="https://dashscope.aliyuncs.com/compatible-mode/v1"
+        )
+        self.dimension = 1792  # text-embedding-v4的维度
+    
+    def embed(self, text: str) -> List[float]:
+        """生成文本的向量表示"""
+        try:
+            response = self.client.embeddings.create(
+                model="text-embedding-v4",
+                input=text
+            )
+            return response.data[0].embedding
+        except Exception as e:
+            print(f"嵌入生成失败: {e}")
+            # 返回零向量作为后备
+            return [0.0] * self.dimension
+
+class VectorIndexer:
+    def __init__(self, embedder: Any, index_path: str):
+        self.embedder = embedder
+        self.index_path = index_path
+        self.index = None
+        self.doc_ids = []
+        self.settings = Settings()
+    
+    def build_index(self, chunks: List[KnowledgeChunk]) -> None:
+        """构建向量索引"""
+        # 仅CPU模式
+        self.index = faiss.IndexFlatL2(self.embedder.dimension)
+        
+        # 生成向量
+        vectors = []
+        for chunk in chunks:
+            vector = self.embedder.embed(chunk.content)
+            vectors.append(vector)
+            self.doc_ids.append(chunk.source)  # 使用source作为文档ID
+        
+        # 添加到索引
+        if vectors:
+            self.index.add(np.array(vectors).astype('float32'))
+        
+        # 保存索引
+        self.save_index()
+    
+    def save_index(self) -> None:
+        """持久化索引"""
+        if self.index is not None:
+            faiss.write_index(self.index, self.index_path)
+            with open(self.index_path + '.ids', 'w') as f:
+                json.dump(self.doc_ids, f)
+    
+    def load_index(self) -> None:
+        """加载索引"""
+        if os.path.exists(self.index_path):
+            self.index = faiss.read_index(self.index_path)
+            with open(self.index_path + '.ids', 'r') as f:
+                self.doc_ids = json.load(f)
+    
+    def add_chunks(self, chunks: List[KnowledgeChunk]) -> None:
+        """增量更新索引"""
+        if self.index is None:
+            # 如果索引不存在，则创建新索引
+            self.build_index(chunks)
+        else:
+            # 增量添加新块
+            vectors = []
+            new_doc_ids = []
+            for chunk in chunks:
+                vector = self.embedder.embed(chunk.content)
+                vectors.append(vector)
+                new_doc_ids.append(chunk.source)
+            
+            # 添加到现有索引
+            if vectors:
+                self.index.add(np.array(vectors).astype('float32'))
+                self.doc_ids.extend(new_doc_ids)
+            
+            # 保存更新后的索引
+            self.save_index()
+    
+    def search(self, query: str, k: int = 5) -> List[dict]:
+        """搜索相似向量"""
+        if self.index is None:
+            self.load_index()
+            
+        if self.index is None:
+            return []
+        
+        # 生成查询向量
+        query_vector = self.embedder.embed(query)
+        
+        # 执行搜索
+        distances, indices = self.index.search(
+            np.array([query_vector]).astype('float32'), 
+            min(k, self.index.ntotal)
+        )
+        
+        # 构建结果
+        results = []
+        for i, (distance, index) in enumerate(zip(distances[0], indices[0])):
+            if index != -1 and index < len(self.doc_ids):  # 有效索引
+                results.append({
+                    'id': self.doc_ids[index],
+                    'distance': float(distance),
+                    'score': 1.0 / (1.0 + float(distance))  # 转换为相似度得分
+                })
+        
+        return results
