@@ -1,11 +1,11 @@
 import re
 
 
-class DataSanitizer:
+class Sanitizer:
     def __init__(self):
         # 敏感信息模式
         self.patterns = [
-            (r'\d{6}[1234]\d{8}[0-9xX]{4}', '[REDACTED_ID]'),  # 身份证号码
+            (r'\d{6}[1234]\d{8}[0-9xX]{3,4}', '[REDACTED_ID]'),  # 身份证号码（允许最后3-4位）
             (r'1[3-9]\d{9}', '138****5678'),  # 手机号码
             (r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', '[REDACTED_EMAIL]'),  # 邮箱地址
             (r'password\s*[:=]\s*[\'"][^\'"]*[\'"]', 'password = "[REDACTED]"'),  # 密码
