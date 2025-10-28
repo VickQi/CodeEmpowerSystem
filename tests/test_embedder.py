@@ -48,8 +48,8 @@ def test_qwen_embedder_initialization():
         mock_settings.QWEN_API_KEY = "test_api_key"
         mock_settings.USE_MOCK = False
         
-        # 模拟OpenAI导入
-        with patch('embedder.OpenAI') as mock_openai:
+        # 模拟OpenAI导入在QwenEmbedder内部
+        with patch('openai.OpenAI') as mock_openai:
             mock_client = Mock()
             mock_openai.return_value = mock_client
             
@@ -62,7 +62,7 @@ def test_qwen_embedder_initialization():
             print("✓ 使用默认API密钥初始化成功")
     
     # 测试使用自定义API密钥初始化
-    with patch('embedder.OpenAI') as mock_openai:
+    with patch('openai.OpenAI') as mock_openai:
         mock_client = Mock()
         mock_openai.return_value = mock_client
         
@@ -75,7 +75,7 @@ def test_qwen_embedder_initialization():
         print("✓ 使用自定义API密钥初始化成功")
     
     # 测试OpenAI库导入失败的情况
-    with patch('embedder.OpenAI', side_effect=ImportError):
+    with patch('openai.OpenAI', side_effect=ImportError):
         qwen_embedder = QwenEmbedder("test_api_key")
         
         # 检查属性
