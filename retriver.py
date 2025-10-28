@@ -1,6 +1,7 @@
 from typing import List, Optional
 from dataclasses import dataclass
 from indexer import VectorIndexer
+from settings import settings
 import logging
 
 # 获取日志记录器
@@ -43,8 +44,14 @@ class SimpleBM25Index:
         return results[:k]
 
 class Retriever:
-    def __init__(self, vector_index: VectorIndexer, bm25_index: Optional[SimpleBM25Index] = None):
-        self.vector_index = vector_index
+    def __init__(self, vector_index: VectorIndexer = None, bm25_index: Optional[SimpleBM25Index] = None):
+        # 如果未提供vector_index，则从settings指定的位置加载
+        if vector_index is None:
+            index_path = settings.VECTOR_STORE_PATH.rstrip('/') + "/faiss.index"
+            self.vector_index = VectorIndexer(None, index_path)  # embedder会在内部处理
+            self.vector_index.load_index()
+        else:
+            self.vector_index = vector_index
         self.bm25_index = bm25_index
     
     def retrieve(self, query: str, k: int = 5, use_bm25: bool = True) -> List[RetrievedDocument]:
@@ -88,17 +95,21 @@ class Retriever:
             doc_id = result['id']
             # 将向量相似度得分转换为0-1范围
             score = result.get('score', 0)
-            merged_scores[doc_id] = {'vector_score': score, 'bm25_score': 0, 'content': ''}
+            content = result.get('content', '')
+            merged_scores[doc_id] = {'vector_score': score, 'bm25_score': 0, 'content': content}
         
         # 处理BM25检索结果
         for result in bm25_results:
             doc_id = result['id']
             score = result.get('score', 0)
+            content = result.get('content', '')
             if doc_id in merged_scores:
                 merged_scores[doc_id]['bm25_score'] = score
-                merged_scores[doc_id]['content'] = result.get('content', '')
+                # 如果BM25有内容且向量检索没有内容，则使用BM25的内容
+                if not merged_scores[doc_id]['content'] and content:
+                    merged_scores[doc_id]['content'] = content
             else:
-                merged_scores[doc_id] = {'vector_score': 0, 'bm25_score': score, 'content': result.get('content', '')}
+                merged_scores[doc_id] = {'vector_score': 0, 'bm25_score': score, 'content': content}
         
         # 计算加权得分并创建RetrievedDocument对象
         merged_documents = []

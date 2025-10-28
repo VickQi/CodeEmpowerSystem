@@ -5,7 +5,7 @@ import numpy as np
 from typing import List, Any
 from openai import OpenAI
 from chunker import KnowledgeChunk
-from settings import Settings
+from settings import settings
 import logging
 
 # 获取日志记录器
@@ -36,12 +36,17 @@ class QwenEmbedder:
             return [0.0] * self.dimension
 
 class VectorIndexer:
-    def __init__(self, embedder: Any, index_path: str):
+    def __init__(self, embedder: Any, index_path: str = None):
         self.embedder = embedder
-        self.index_path = index_path
+        # 使用settings中的VECTOR_STORE_PATH和默认文件名
+        if index_path is None:
+            os.makedirs(settings.VECTOR_STORE_PATH, exist_ok=True)
+            self.index_path = os.path.join(settings.VECTOR_STORE_PATH, "faiss.index")
+        else:
+            self.index_path = index_path
         self.index = None
         self.doc_ids = []
-        self.settings = Settings()
+        self.doc_contents = []  # 添加文档内容存储
     
     def build_index(self, chunks: List[KnowledgeChunk]) -> None:
         """构建向量索引"""
@@ -64,6 +69,7 @@ class VectorIndexer:
                     vector = vector[:self.embedder.dimension]
             vectors.append(vector)
             self.doc_ids.append(chunk.source)  # 使用source作为文档ID
+            self.doc_contents.append(chunk.content)  # 存储文档内容
         
         # 添加到索引
         if vectors:
@@ -80,6 +86,8 @@ class VectorIndexer:
             faiss.write_index(self.index, self.index_path)
             with open(self.index_path + '.ids', 'w') as f:
                 json.dump(self.doc_ids, f)
+            with open(self.index_path + '.contents', 'w') as f:
+                json.dump(self.doc_contents, f)
             logger.debug(f"索引已保存到 {self.index_path}")
     
     def load_index(self) -> None:
@@ -88,6 +96,8 @@ class VectorIndexer:
             self.index = faiss.read_index(self.index_path)
             with open(self.index_path + '.ids', 'r') as f:
                 self.doc_ids = json.load(f)
+            with open(self.index_path + '.contents', 'r') as f:
+                self.doc_contents = json.load(f)
             logger.info(f"索引加载成功，包含 {self.index.ntotal} 个向量")
         else:
             logger.warning(f"索引文件不存在: {self.index_path}")
@@ -103,6 +113,7 @@ class VectorIndexer:
             # 增量添加新块
             vectors = []
             new_doc_ids = []
+            new_doc_contents = []
             for chunk in chunks:
                 vector = self.embedder.embed(chunk.content)
                 # 确保向量维度正确
@@ -115,11 +126,13 @@ class VectorIndexer:
                         vector = vector[:self.embedder.dimension]
                 vectors.append(vector)
                 new_doc_ids.append(chunk.source)
+                new_doc_contents.append(chunk.content)
             
             # 添加到现有索引
             if vectors:
                 self.index.add(np.array(vectors).astype('float32'))
                 self.doc_ids.extend(new_doc_ids)
+                self.doc_contents.extend(new_doc_contents)
                 logger.info(f"成功添加 {len(vectors)} 个向量到现有索引")
             
             # 保存更新后的索引
@@ -160,7 +173,8 @@ class VectorIndexer:
                 results.append({
                     'id': self.doc_ids[index],
                     'distance': float(distance),
-                    'score': 1.0 / (1.0 + float(distance))  # 转换为相似度得分
+                    'score': 1.0 / (1.0 + float(distance)),  # 转换为相似度得分
+                    'content': self.doc_contents[index]  # 添加文档内容
                 })
         
         logger.debug(f"向量搜索返回 {len(results)} 个结果")

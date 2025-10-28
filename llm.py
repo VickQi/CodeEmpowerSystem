@@ -48,6 +48,16 @@ class LLMInterface:
     def _qwen_invoke(self, messages: List[Message]) -> str:
         """调用Qwen大模型"""
         try:
+            print(f"\n提示词构建完成，包含 {len(messages)} 条消息")
+            # 打印实际的提示词内容
+            print("\n实际发送给大模型的提示词:")
+            print("=" * 50)
+            prompt_content = messages[0]['content']
+            print(prompt_content)
+            print("=" * 50)
+
+            # 统计提示词长度
+            print(f"\n提示词长度: {len(prompt_content)} 字符")
             completion = self.client.chat.completions.create(
                 # 使用指定模型
                 model="qwen3-next-80b-a3b-thinking",
