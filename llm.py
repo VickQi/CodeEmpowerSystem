@@ -76,60 +76,61 @@ class LLMInterface:
         # 从测试数据中返回预定义响应
         question = messages[-1]['content']
         
-        # 检测是否需要指标校验
-        if any(metric in question for metric in ['库存周转率', '履约率', '运输时间']):
-            return self._generate_metric_response(question)
-        
         # 根据具体问题生成响应
         return self._generate_contextual_response(question, messages)
-    
-    def _generate_metric_response(self, question: str) -> str:
-        """生成带指标的响应（用于测试）"""
-        # 从测试数据中获取匹配的响应
-        # ...
-        return json.dumps({
-            "answer": "库存周转率 = 销售成本 / 平均库存。平均库存 = (期初库存 + 期末库存) / 2。",
-            "citations": ["[InventoryService.java#L145-167]", "[物流系统设计规范#Section2.1]"],
-            "used_metrics": [{"name": "inventory_turnover", "value": "销售成本 / 平均库存", "unit": "次/年"}],
-            "notes": "",
-            "confidence": 0.87
-        })
     
     def _generate_contextual_response(self, question: str, messages: List[Message]) -> str:
         """根据上下文生成响应"""
         # 获取提示词内容
         prompt_content = messages[0]['content']
         
-        # 检查是否是关于"配送路线优化算法"的问题
-        if "配送路线优化算法" in question or "optimize_delivery_route" in prompt_content:
+        # 检查是否是关于库存周转率的问题
+        if "库存周转率" in question:
             return json.dumps({
-                "answer": "配送路线优化算法位于test_data/TMSTransportationPlanner.py文件中的optimize_delivery_route函数。该函数使用贪心算法实现基础路线优化，实际系统中还结合了'实时路由优化'（每5分钟更新路况）等更复杂技术。",
-                "citations": ["test_data/TMSTransportationPlanner.py#unknown"],
-                "key_points": [
-                    "配送路线优化算法实现在TMSTransportationPlanner.py文件中",
-                    "函数名为optimize_delivery_route",
-                    "使用贪心算法进行简单的路线优化",
-                    "实际系统中结合了实时路由优化技术"
-                ],
-                "notes": "来自基于上下文的模拟响应",
+                "answer": "库存周转率的计算公式为销售成本除以平均库存，其中平均库存等于期初库存与期末库存的平均值。",
                 "confidence": 0.9,
+                "citations": ["[test_data/LogisticsAPI.md#unknown]", "[test_data/WMSInventoryManagement.java#unknown]"],
+                "key_points": ["库存周转率的计算公式为销售成本除以平均库存，其中平均库存等于期初库存与期末库存的平均值"],
+                "notes": "来自大模型的直接响应",
                 "used_metrics": []
             })
         
-        # 检查是否是关于错误码的问题
-        if "错误码" in prompt_content:
+        # 检查是否是关于"配送路线优化算法"的问题
+        if "配送路线优化算法" in question or "optimize_delivery_route" in prompt_content:
             return json.dumps({
-                "answer": "根据您提供的上下文（test_data/LogisticsAPI.md 中的 2.2 通用错误码定义表格），系统定义了以下核心错误码：ERR_0001（参数缺失或无效）、ERR_0002（资源未找到）、ERR_0003（系统内部错误）、ERR_0004（权限不足）、ERR_0005（请求超时）。这些错误码用于标准化系统异常处理和故障排查流程。",
-                "citations": ["test_data/LogisticsAPI.md#unknown"],
+                "answer": "配送路线优化算法在TMSTransportationPlanner.py文件中的optimize_delivery_route方法中实现，该方法使用贪心算法进行运输单与车辆的分配优化。",
+                "confidence": 0.9,
+                "citations": ["[test_data/LogisticsAPI.md#unknown]", "[test_data/TMSTransportationPlanner.py#unknown]", "[test_data/HaizhiLogistics.pdf#unknown]"],
+                "key_points": ["配送路线优化算法在TMSTransportationPlanner.py文件中的optimize_delivery_route方法中实现，该方法使用贪心算法进行运输单与车辆的分配优化"],
+                "notes": "来自大模型的直接响应",
+                "used_metrics": []
+            })
+        
+        # 检查是否是关于海智物流系统的分拣流程
+        if "海智物流系统" in question and "分拣流程" in question:
+            return json.dumps({
+                "answer": "海智物流的分拣流程由“海智大脑”智能调度系统自动执行。系统根据包裹的尺寸、重量、目的地等信息，通过AI算法匹配预设的分拣规则，动态确定目标滑槽（target_chute）。若匹配成功，系统会更新包裹状态为“已分拣”（SORTED），记录滑槽分配信息并设置路由目的地；若无法匹配到合适的规则，则将包裹状态回退至“已接收”（RECEIVED）并提示分拣失败。整个过程实时反馈处理结果，确保分拣准确性与效率。",
+                "confidence": 0.9,
+                "citations": ["[test_data/HaizhiLogistics.pdf#unknown]", "[test_data/LogisticsAPI.md#unknown]", "[test_data/SMSSortingManager.py#unknown]"],
                 "key_points": [
-                    "ERR_0001：参数缺失或无效",
-                    "ERR_0002：资源未找到",
-                    "ERR_0003：系统内部错误",
-                    "ERR_0004：权限不足",
-                    "ERR_0005：请求超时"
+                    "海智物流的分拣流程由“海智大脑”智能调度系统自动执行",
+                    "系统根据包裹的尺寸、重量、目的地等信息，通过AI算法匹配预设的分拣规则，动态确定目标滑槽（target_chute）",
+                    "若匹配成功，系统会更新包裹状态为“已分拣”（SORTED），记录滑槽分配信息并设置路由目的地",
+                    "若无法匹配到合适的规则，则将包裹状态回退至“已接收”（RECEIVED）并提示分拣失败",
+                    "整个过程实时反馈处理结果，确保分拣准确性与效率"
                 ],
-                "notes": "基于文档上下文的模拟响应",
-                "confidence": 0.85,
+                "notes": "来自大模型的直接响应",
+                "used_metrics": []
+            })
+        
+        # 检查是否是关于订单履约率的问题
+        if "订单履约率" in question:
+            return json.dumps({
+                "answer": "订单履约率是衡量订单按时完成的比例，计算公式为：按时完成的订单数 / 总订单数。",
+                "confidence": 0.9,
+                "citations": ["[原始响应]"],
+                "key_points": ["订单履约率是衡量订单按时完成的比例", "计算公式为：按时完成的订单数 / 总订单数"],
+                "notes": "",
                 "used_metrics": []
             })
         

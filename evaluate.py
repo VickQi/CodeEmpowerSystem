@@ -48,9 +48,18 @@ def calculate_similarity_score(answer, expected_answer):
         answer_vec = np.array(answer_embedding)
         expected_vec = np.array(expected_embedding)
         
-        similarity = np.dot(answer_vec, expected_vec) / (
-            np.linalg.norm(answer_vec) * np.linalg.norm(expected_vec)
-        )
+        # 计算点积
+        dot_product = np.dot(answer_vec, expected_vec)
+        
+        # 计算向量模长
+        norm_answer = np.linalg.norm(answer_vec)
+        norm_expected = np.linalg.norm(expected_vec)
+        
+        # 避免除零错误
+        if norm_answer == 0 or norm_expected == 0:
+            return 0.0
+        
+        similarity = dot_product / (norm_answer * norm_expected)
         
         return float(similarity)
     except Exception as e:

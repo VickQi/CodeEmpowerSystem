@@ -2,6 +2,7 @@ import numpy as np
 from typing import List
 from settings import settings
 import logging
+import hashlib
 
 # 获取日志记录器
 logger = logging.getLogger('rag_system')
@@ -21,10 +22,23 @@ class MockEmbeddings:
             text: 输入文本
             
         Returns:
-            固定维度的模拟向量
+            固定维度的模拟向量，基于文本内容生成
         """
-        # 返回固定长度的模拟向量，不进行任何网络请求
-        return [0.0] * self.dimension
+        # 基于文本内容生成伪随机向量
+        # 使用hash来确保相同文本产生相同向量
+        hash_obj = hashlib.md5(text.encode('utf-8'))
+        hash_digest = hash_obj.digest()
+        
+        # 从hash生成确定性的浮点数向量
+        np.random.seed(int.from_bytes(hash_digest, 'big') % (2**32))
+        vector = np.random.rand(self.dimension).tolist()
+        
+        # 归一化向量，使其模长为1
+        norm = np.linalg.norm(vector)
+        if norm > 0:
+            vector = [x / norm for x in vector]
+        
+        return vector
 
 class QwenEmbedder:
     """使用Qwen大模型进行文本嵌入"""
