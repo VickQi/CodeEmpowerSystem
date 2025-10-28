@@ -204,6 +204,43 @@ public class WMSInventoryManagement {
     }
     
     /**
+     * 获取库存水平
+     * 
+     * @param productId 商品ID
+     * @return 库存数量
+     */
+    public int getInventoryLevel(String productId) {
+        Inventory inventory = inventoryMap.get(productId);
+        if (inventory == null) {
+            return 0; // 边界条件：商品不存在时返回0
+        }
+        return inventory.getQuantity();
+    }
+    
+    /**
+     * 计算库存周转率
+     * 公式：库存周转率 = 销售成本 / 平均库存
+     * 平均库存 = (期初库存 + 期末库存) / 2
+     * 
+     * @param costOfGoodsSold 销售成本
+     * @param beginningInventory 期初库存
+     * @param endingInventory 期末库存
+     * @return 库存周转率
+     */
+    public double calculateTurnoverRate(double costOfGoodsSold, double beginningInventory, double endingInventory) {
+        // 计算平均库存
+        double averageInventory = (beginningInventory + endingInventory) / 2;
+        
+        // 边界条件：平均库存为0时返回0
+        if (averageInventory == 0) {
+            return 0;
+        }
+        
+        // 计算并返回库存周转率
+        return costOfGoodsSold / averageInventory;
+    }
+    
+    /**
      * 生成入库单ID
      * 
      * @return 入库单ID
