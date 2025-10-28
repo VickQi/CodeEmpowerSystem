@@ -19,7 +19,6 @@ class TestSettings(unittest.TestCase):
         self.assertEqual(settings.LOG_PATH, "logs/", "LOG_PATH 应该为 '/tmp/logs/'")
         self.assertEqual(settings.DATA_PATH, "data/", "DATA_PATH 应该为 '/tmp/data/'")
         self.assertEqual(settings.VECTOR_STORE_PATH, "vectorstore/", "VECTOR_STORE_PATH 应该为 '/tmp/vectorstore/'")
-        print(f"读取到的 QWEN_API_KEY 是: {settings.QWEN_API_KEY}")
         # 测试整数设置
         self.assertEqual(settings.CHUNK_SIZE, 500, "CHUNK_SIZE 应该为 1000")
         self.assertEqual(settings.CHUNK_OVERLAP, 50, "CHUNK_OVERLAP 应该为 100")
