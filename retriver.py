@@ -3,9 +3,15 @@ from dataclasses import dataclass
 from indexer import VectorIndexer
 from settings import settings
 import logging
+import os
 
 # 获取日志记录器
 logger = logging.getLogger(__name__)
+
+# 定义异常类
+class RetrievalError(Exception):
+    """检索异常"""
+    pass
 
 @dataclass
 class RetrievedDocument:
@@ -47,9 +53,8 @@ class Retriever:
     def __init__(self, vector_index: VectorIndexer = None, bm25_index: Optional[SimpleBM25Index] = None):
         # 如果未提供vector_index，则从settings指定的位置加载
         if vector_index is None:
-            index_path = settings.VECTOR_STORE_PATH.rstrip('/') + "/faiss.index"
+            index_path = os.path.join(settings.VECTOR_STORE_PATH, "faiss.index")
             self.vector_index = VectorIndexer(None, index_path)  # embedder会在内部处理
-            self.vector_index.load_index()
         else:
             self.vector_index = vector_index
         self.bm25_index = bm25_index

@@ -43,6 +43,8 @@ class VectorIndexer:
             os.makedirs(settings.VECTOR_STORE_PATH, exist_ok=True)
             self.index_path = os.path.join(settings.VECTOR_STORE_PATH, "faiss.index")
         else:
+            # 确保索引路径的目录存在
+            os.makedirs(os.path.dirname(index_path), exist_ok=True)
             self.index_path = index_path
         self.index = None
         self.doc_ids = []
