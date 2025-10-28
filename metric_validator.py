@@ -7,13 +7,11 @@
 from typing import Dict, List, Any, Union
 
 class MetricValidator:
-    # 支持的物流指标列表
+    # 支持的物流指标列表 (根据FR-08需求)
     SUPPORTED_METRICS = [
         'inventory_turnover',           # 库存周转率
-        'order_fulfillment_rate',       # 订单履行率
-        'transit_time',                 # 运输时间
-        'warehousing_cost',             # 仓储成本
-        'on_time_delivery_rate'         # 准时交付率
+        'shipment_on_time_rate',        # 发货准时率
+        'avg_delivery_time'             # 平均配送时间
     ]
     
     def validate(self, payload: dict, reference_data: dict) -> dict:
@@ -54,54 +52,25 @@ class MetricValidator:
                 notes.append(f"无法验证指标 {name}：数据类型错误")
                 continue
                 
-            # 获取容差并比较值
-            tolerance = self._get_tolerance(name)
-            if not self._is_within_tolerance(metric_value, ref_value, tolerance):
-                diff = abs(metric_value - ref_value) / ref_value * 100
-                notes.append(f"{name}超差{diff:.1f}%（基准:{ref_value}, 抽取:{metric_value}）")
-                # 降低置信度
-                confidence = min(confidence, 0.5)
+            # 计算差值百分比
+            if ref_value != 0:
+                diff_percentage = abs(metric_value - ref_value) / ref_value * 100
             else:
-                notes.append(f"{name}在容差范围内（基准:{ref_value}, 抽取:{metric_value}）")
+                # 如果基准值为0，只有当抽取值也为0时才算一致
+                diff_percentage = 0 if metric_value == 0 else float('inf')
+            
+            # 根据FR-08需求进行判断
+            if diff_percentage <= 5:  # 差值<=5%视为一致
+                confidence = max(confidence, 0.8)
+            else:  # 差值>5%
+                notes.append(f"{name}超差{diff_percentage:.1f}%")
+                confidence = 0.5  # 置信度调整为0.5
         
         # 更新payload
         payload['notes'] = "；".join(notes) if notes else payload.get('notes', '')
         payload['confidence'] = confidence
         
         return payload
-    
-    def _get_tolerance(self, metric_name: str) -> float:
-        """获取指标容差
-        
-        Args:
-            metric_name: 指标名称
-            
-        Returns:
-            容差值（小数形式，如0.05表示5%）
-        """
-        tolerances = {
-            'inventory_turnover': 0.05,        # 5%
-            'order_fulfillment_rate': 0.02,    # 2%
-            'transit_time': 0.10,              # 10%
-            'warehousing_cost': 0.05,          # 5%
-            'on_time_delivery_rate': 0.02      # 2%
-        }
-        return tolerances.get(metric_name, 0.05)
-    
-    def _is_within_tolerance(self, value: float, reference: float, tolerance: float) -> bool:
-        """检查值是否在容差范围内
-        
-        Args:
-            value: 实际值
-            reference: 基准值
-            tolerance: 容差
-            
-        Returns:
-            是否在容差范围内
-        """
-        if reference == 0:
-            return value == 0
-        return abs(value - reference) / reference <= tolerance
 
 # 使用示例和测试
 if __name__ == "__main__":
@@ -110,25 +79,23 @@ if __name__ == "__main__":
     
     # 模拟一个包含指标的响应
     payload = {
-        'answer': '根据分析，海智物流的准时交付率为95%',
+        'answer': '根据分析，库存周转率为8.2',
         'confidence': 0.9,
-        'citations': ['[TMSTransportationPlanner.py#L15]'],
-        'key_points': ['准时交付率为95%'],
+        'citations': ['[WMSInventoryManagement.java#L50]'],
+        'key_points': ['库存周转率为8.2'],
         'notes': '',
         'used_metrics': [
             {
-                'name': 'on_time_delivery_rate',
-                'value': 0.95,
-                'unit': '比率'
+                'name': 'inventory_turnover',
+                'value': 8.2,
+                'unit': '次数'
             }
         ]
     }
     
     # 模拟基准数据
     reference_data = {
-        'on_time_delivery_rate': 0.92,  # 基准值为92%
-        'inventory_turnover': 8.5,
-        'order_fulfillment_rate': 0.98
+        'inventory_turnover': 8.5,  # 基准值为8.5
     }
     
     # 执行验证
