@@ -27,3 +27,6 @@ class Settings:
         
         # Qwen大模型API KEY
         self.QWEN_API_KEY = os.getenv('QWEN_API_KEY', '')
+
+# 创建全局settings实例
+settings = Settings()
