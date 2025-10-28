@@ -1,7 +1,6 @@
 import unittest
 import os
 import sys
-from unittest.mock import patch
 from settings import Settings
 
 
