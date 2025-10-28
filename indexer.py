@@ -3,41 +3,25 @@ import json
 import faiss
 import numpy as np
 from typing import List, Any
-from openai import OpenAI
 from chunker import KnowledgeChunk
 from settings import settings
+from embedder import MockEmbeddings, QwenEmbedder
 import logging
 
 # 获取日志记录器
 logger = logging.getLogger(__name__)
 
-class QwenEmbedder:
-    """使用Qwen大模型进行文本嵌入"""
-    def __init__(self, api_key: str):
-        self.api_key = api_key
-        self.client = OpenAI(
-            api_key=api_key,
-            base_url="https://dashscope.aliyuncs.com/compatible-mode/v1"
-        )
-        # 实际使用的模型维度（根据实际测试结果调整）
-        self.dimension = 1536  # 实际模型维度
-    
-    def embed(self, text: str) -> List[float]:
-        """生成文本的向量表示"""
-        try:
-            response = self.client.embeddings.create(
-                model="text-embedding-v1",  # 使用实际的模型
-                input=text
-            )
-            return response.data[0].embedding
-        except Exception as e:
-            logger.error(f"嵌入生成失败: {e}")
-            # 返回零向量作为后备
-            return [0.0] * self.dimension
-
 class VectorIndexer:
-    def __init__(self, embedder: Any, index_path: str = None):
-        self.embedder = embedder
+    def __init__(self, embedder: Any = None, index_path: str = None):
+        # 如果没有提供embedder，根据设置选择合适的embedder
+        if embedder is None:
+            if settings.USE_MOCK or not settings.QWEN_API_KEY:
+                self.embedder = MockEmbeddings()
+            else:
+                self.embedder = QwenEmbedder()
+        else:
+            self.embedder = embedder
+            
         # 使用settings中的VECTOR_STORE_PATH和默认文件名
         if index_path is None:
             os.makedirs(settings.VECTOR_STORE_PATH, exist_ok=True)

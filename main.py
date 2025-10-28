@@ -1,59 +1,59 @@
-import json
-import sys
+#!/usr/bin/env python3
+
 import os
-from typing import List
+import sys
+import json
+import click
 from pathlib import Path
 
-import click
+# 添加项目根目录到Python路径
+project_root = Path(__file__).parent
+sys.path.insert(0, str(project_root))
 
-from chunker import SemanticChunker, KnowledgeChunk
-from cleaner import TextCleaner
-from indexer import VectorIndexer, QwenEmbedder
 from loader import DocumentLoader
-from logger import logger
-from llm import LLMInterface, Message
-from metric_validator import MetricValidator
-from parser import ResponseParser
+from cleaner import TextCleaner
+from sanitizer import Sanitizer
+from chunker import SemanticChunker
+from indexer import VectorIndexer
+from embedder import MockEmbeddings, QwenEmbedder  # 更新导入
+from retriver import Retriever
 from prompt import PromptBuilder
-from retriver import Retriever, RetrievalError
+from llm import LLMInterface
+from parser import ResponseParser
+from metric_validator import MetricValidator
+from logger import logger
 from settings import settings
-from sanitizer import DataSanitizer
 
-# 定义参考指标（如果之前缺失）
-REFERENCE_METRICS = []
+# 参考指标（来自haiwise哲学）
+REFERENCE_METRICS = {
+    "relevance": 0.8,
+    "completeness": 0.9,
+    "accuracy": 0.95,
+    "clarity": 0.85,
+    "confidence": 0.8
+}
 
 @click.group()
 def cli():
-    """物流知识赋能系统命令行接口"""
+    """CodeEmpowerSystem CLI"""
     pass
 
 @cli.command()
 @click.option('--build-index', is_flag=True, help='构建向量索引')
-@click.option('-q', '--question', help='查询问题')
+@click.option('--question', help='查询问题')
 @click.option('--agent', type=click.Choice(['dev', 'product', 'test']), 
               default='dev', help='智能体类型')
 def run(build_index: bool, question: str, agent: str):
-    """运行系统：处理文档、构建索引、查询"""
+    """运行系统"""
     try:
         # 初始化系统组件
-        loader = DocumentLoader()
-        cleaner = TextCleaner()
-        sanitizer = DataSanitizer()
-        chunker = SemanticChunker()
-        
-        # 使用QwenEmbedder替代MockEmbeddings
-        if settings.QWEN_API_KEY:
-            embedder = QwenEmbedder(settings.QWEN_API_KEY)
+        # 使用新的embedder模块
+        if settings.USE_MOCK or not settings.QWEN_API_KEY:
+            embedder = MockEmbeddings()
         else:
-            # 如果没有API密钥，使用MockEmbedder作为后备
-            class MockEmbedder:
-                def __init__(self):
-                    self.dimension = 1536  # 与实际模型一致
-                    
-                def embed(self, text: str):
-                    # 返回固定长度的模拟向量
-                    return [0.0] * self.dimension
-            embedder = MockEmbedder()
+            embedder = QwenEmbedder(settings.QWEN_API_KEY)
+            
+        # 正确设置索引路径
         index_path = os.path.join(settings.VECTOR_STORE_PATH, "faiss.index")
         indexer = VectorIndexer(embedder, index_path)
         retriever = Retriever(indexer)
@@ -62,6 +62,10 @@ def run(build_index: bool, question: str, agent: str):
         llm = LLMInterface()
         parser = ResponseParser()
         validator = MetricValidator()
+        cleaner = TextCleaner()
+        sanitizer = Sanitizer()
+        chunker = SemanticChunker()
+        loader = DocumentLoader()  # 添加这行来定义loader变量
         
         if build_index:
             # 构建向量索引流程
@@ -162,20 +166,15 @@ def query(question: str, agent: str):
     """执行知识查询"""
     try:
         # 初始化系统组件
-        # 使用QwenEmbedder替代MockEmbeddings
-        if settings.QWEN_API_KEY:
-            embedder = QwenEmbedder(settings.QWEN_API_KEY)
+        # 使用新的embedder模块
+        if settings.USE_MOCK or not settings.QWEN_API_KEY:
+            embedder = MockEmbeddings()
         else:
-            # 如果没有API密钥，使用MockEmbedder作为后备
-            class MockEmbedder:
-                def __init__(self):
-                    self.dimension = 1536  # 与实际模型一致
-                    
-                def embed(self, text: str):
-                    # 返回固定长度的模拟向量
-                    return [0.0] * self.dimension
-            embedder = MockEmbedder()
-        indexer = VectorIndexer(embedder, settings.VECTOR_STORE_PATH)
+            embedder = QwenEmbedder(settings.QWEN_API_KEY)
+            
+        # 正确设置索引路径
+        index_path = os.path.join(settings.VECTOR_STORE_PATH, "faiss.index")
+        indexer = VectorIndexer(embedder, index_path)
         retriever = Retriever(indexer)
         promptor = PromptBuilder()
         # 使用根据配置决定的模式（Mock或Qwen）

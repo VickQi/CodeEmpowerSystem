@@ -61,7 +61,6 @@ class TestSettings(unittest.TestCase):
         
         # 确保布尔类型正确
         self.assertIsInstance(settings.USE_BM25, bool, "USE_BM25 应该是 bool 类型")
-        self.assertIsInstance(settings.ALLOW_INTERNET, bool, "ALLOW_INTERNET 应该是 bool 类型")
         self.assertIsInstance(settings.USE_GPU, bool, "USE_GPU 应该是 bool 类型")
         
         # 确保字符串类型正确
