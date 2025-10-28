@@ -1,0 +1,4 @@
+{"question": "库存周转率的计算公式是什么？", "expected_answer": "库存周转率 = 销售成本 / 平均库存。平均库存 = (期初库存 + 期末库存) / 2。", "category": "inventory"}
+{"question": "配送路线优化算法在哪？", "expected_answer": "配送路线优化算法位于test_data/TMSTransportationPlanner.py文件中的optimize_delivery_route函数", "category": "transportation"}
+{"question": "海智物流系统的分拣流程是怎样的？", "expected_answer": "海智物流系统的分拣流程包括接收包裹、分拣包裹、路由包裹和装车等步骤。", "category": "sorting"}
+{"question": "如何计算订单履约率？", "expected_answer": "订单履约率是衡量订单按时完成的比例，计算公式为：按时完成的订单数 / 总订单数。", "category": "order"}

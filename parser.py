@@ -72,11 +72,14 @@ class ResponseParser:
                 content = choice['text']
             
             if content:
+                # 生成具体的引用信息
+                citations = self._generate_citations(retrieved_docs)
+                
                 # 构造结构化响应
                 return {
                     'answer': content.strip(),
                     'confidence': 0.9,  # OpenAI响应通常具有较高置信度
-                    'citations': ["[原始响应]"],
+                    'citations': citations,
                     'key_points': self._extract_key_points(content.strip()),
                     'notes': '来自大模型的直接响应',
                     'used_metrics': []
@@ -98,14 +101,26 @@ class ResponseParser:
                           retrieved_docs: List[RetrievedDocument]) -> List[str]:
         """验证引用可追溯性"""
         if not citations:
-            return ["[无有效引用]"]
+            return self._generate_citations(retrieved_docs)
             
         valid_citations = []
         for citation in citations:
             # 检查引用是否在检索结果中
             if any(doc.source + '#' + doc.location in citation for doc in retrieved_docs):
                 valid_citations.append(citation)
-        return valid_citations or ["[无有效引用]"]
+        return valid_citations or self._generate_citations(retrieved_docs)
+    
+    def _generate_citations(self, retrieved_docs: List[RetrievedDocument]) -> List[str]:
+        """生成引用信息"""
+        if not retrieved_docs:
+            return ["[无有效引用]"]
+        
+        citations = []
+        for doc in retrieved_docs[:3]:  # 最多引用前3个文档
+            citation = f"[{doc.source}#{doc.location}]"
+            citations.append(citation)
+        
+        return citations if citations else ["[无有效引用]"]
     
     def _get_default(self, field: str) -> Any:
         """获取字段默认值"""
@@ -156,10 +171,13 @@ class ResponseParser:
         # 尝试从响应中提取有用信息
         answer = self._extract_answer_from_response(raw_response)
         
+        # 生成具体的引用信息
+        citations = self._generate_citations(retrieved_docs)
+        
         return {
             'answer': answer,
             'confidence': 0.5,  # 给一个中等的置信度
-            'citations': ["[原始响应]"],
+            'citations': citations,
             'key_points': self._extract_key_points(answer),
             'notes': '原始响应不是有效的JSON格式',
             'used_metrics': []

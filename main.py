@@ -162,7 +162,7 @@ def run(build_index: bool, question: str, agent: str):
 @click.option('--q', '--question', required=True, help='查询问题')
 @click.option('--agent', type=click.Choice(['dev', 'product', 'test']), 
               default='dev', help='智能体类型')
-def query(question: str, agent: str):
+def query(q: str, agent: str):
     """执行知识查询"""
     try:
         # 初始化系统组件
@@ -183,15 +183,15 @@ def query(question: str, agent: str):
         validator = MetricValidator()
         
         # 执行查询流程
-        logger.info(f"收到查询 (agent={agent}): {question}")
+        logger.info(f"收到查询 (agent={agent}): {q}")
         
         # 检索相关文档
-        retrieved_docs = retriever.retrieve(question, k=settings.TOP_K, 
+        retrieved_docs = retriever.retrieve(q, k=settings.TOP_K, 
                                           use_bm25=settings.USE_BM25)
         logger.debug(f"检索到 {len(retrieved_docs)} 个相关文档")
         
         # 构建提示词
-        messages = promptor.build_prompt(question, retrieved_docs, agent)
+        messages = promptor.build_prompt(q, retrieved_docs, agent)
         
         # 调用LLM
         raw_response = llm.invoke(messages)
