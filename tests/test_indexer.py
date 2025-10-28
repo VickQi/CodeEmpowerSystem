@@ -17,6 +17,7 @@ from loader import DocumentLoader
 from cleaner import TextCleaner
 from chunker import SemanticChunker, KnowledgeChunk
 from indexer import QwenEmbedder, VectorIndexer
+from settings import Settings
 
 def test_indexer_with_test_data():
     """测试indexer将test_data中的数据向量化并存储到FAISS向量库"""
@@ -27,18 +28,25 @@ def test_indexer_with_test_data():
     cleaner = TextCleaner()
     chunker = SemanticChunker()
     
-    # 使用MockEmbedder替代QwenEmbedder进行测试，避免API调用
-    class MockEmbedder:
-        def __init__(self):
-            self.dimension = 1792
-            
-        def embed(self, text: str):
-            # 返回固定长度的模拟向量
-            return [0.1] * self.dimension
+    # 获取API密钥
+    settings = Settings()
+    if not settings.QWEN_API_KEY:
+        print("警告: QWEN_API_KEY未设置，将使用MockEmbedder")
+        # 使用MockEmbedder替代QwenEmbedder进行测试，避免API调用
+        class MockEmbedder:
+            def __init__(self):
+                self.dimension = 1536  # 与实际模型一致
+                
+            def embed(self, text: str):
+                # 返回固定长度的模拟向量
+                return [0.1] * self.dimension
+        embedder = MockEmbedder()
+    else:
+        embedder = QwenEmbedder(settings.QWEN_API_KEY)
     
     # 创建临时索引文件
     with tempfile.NamedTemporaryFile(delete=False) as tmp_index_file:
-        indexer = VectorIndexer(MockEmbedder(), tmp_index_file.name)
+        indexer = VectorIndexer(embedder, tmp_index_file.name)
         
         # 获取test_data目录
         test_data_dir = project_root / "test_data"
@@ -71,9 +79,34 @@ def test_indexer_with_test_data():
         
         print(f"总共生成了 {len(all_chunks)} 个知识块")
         
+        # 检查前几个块的内容和维度
+        print("检查前几个块的向量维度:")
+        if not settings.QWEN_API_KEY:
+            test_embedder = type(embedder)()
+        else:
+            test_embedder = QwenEmbedder(settings.QWEN_API_KEY)
+            
+        for i, chunk in enumerate(all_chunks[:3]):
+            vector = test_embedder.embed(chunk.content)
+            print(f"  块 {i+1} 向量维度: {len(vector)}")
+        
         # 构建索引
         print("开始构建向量索引...")
-        indexer.build_index(all_chunks)
+        try:
+            indexer.build_index(all_chunks)
+            print("索引构建完成")
+        except Exception as e:
+            print(f"索引构建失败: {e}")
+            # 尝试逐个添加块来定位问题
+            print("尝试逐个添加块来定位问题...")
+            for i, chunk in enumerate(all_chunks[:5]):  # 只测试前5个块
+                try:
+                    print(f"  添加块 {i+1}: {chunk.source}")
+                    vector = test_embedder.embed(chunk.content)
+                    print(f"    向量维度: {len(vector)}")
+                except Exception as chunk_error:
+                    print(f"    块 {i+1} 处理失败: {chunk_error}")
+            raise e
         
         # 验证索引已创建
         assert indexer.index is not None, "索引未正确创建"
@@ -91,7 +124,12 @@ def test_indexer_with_test_data():
         
         # 测试加载索引
         print("测试加载索引...")
-        new_indexer = VectorIndexer(MockEmbedder(), tmp_index_file.name)
+        # 根据是否有API密钥选择embedder
+        if not settings.QWEN_API_KEY:
+            test_embedder = type(embedder)()
+        else:
+            test_embedder = QwenEmbedder(settings.QWEN_API_KEY)
+        new_indexer = VectorIndexer(test_embedder, tmp_index_file.name)
         new_indexer.load_index()
         
         assert new_indexer.index is not None, "索引未正确加载"

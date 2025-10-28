@@ -15,13 +15,14 @@ class QwenEmbedder:
             api_key=api_key,
             base_url="https://dashscope.aliyuncs.com/compatible-mode/v1"
         )
-        self.dimension = 1792  # text-embedding-v4的维度
+        # 实际使用的模型维度（根据实际测试结果调整）
+        self.dimension = 1536  # 实际模型维度
     
     def embed(self, text: str) -> List[float]:
         """生成文本的向量表示"""
         try:
             response = self.client.embeddings.create(
-                model="text-embedding-v4",
+                model="text-embedding-v1",  # 使用实际的模型
                 input=text
             )
             return response.data[0].embedding
@@ -47,6 +48,14 @@ class VectorIndexer:
         vectors = []
         for chunk in chunks:
             vector = self.embedder.embed(chunk.content)
+            # 确保向量维度正确
+            if len(vector) != self.embedder.dimension:
+                print(f"警告: 向量维度不匹配，期望 {self.embedder.dimension}，实际 {len(vector)}")
+                # 如果维度不匹配，使用零向量填充或截断
+                if len(vector) < self.embedder.dimension:
+                    vector.extend([0.0] * (self.embedder.dimension - len(vector)))
+                else:
+                    vector = vector[:self.embedder.dimension]
             vectors.append(vector)
             self.doc_ids.append(chunk.source)  # 使用source作为文档ID
         
@@ -82,6 +91,14 @@ class VectorIndexer:
             new_doc_ids = []
             for chunk in chunks:
                 vector = self.embedder.embed(chunk.content)
+                # 确保向量维度正确
+                if len(vector) != self.embedder.dimension:
+                    print(f"警告: 向量维度不匹配，期望 {self.embedder.dimension}，实际 {len(vector)}")
+                    # 如果维度不匹配，使用零向量填充或截断
+                    if len(vector) < self.embedder.dimension:
+                        vector.extend([0.0] * (self.embedder.dimension - len(vector)))
+                    else:
+                        vector = vector[:self.embedder.dimension]
                 vectors.append(vector)
                 new_doc_ids.append(chunk.source)
             
@@ -103,6 +120,14 @@ class VectorIndexer:
         
         # 生成查询向量
         query_vector = self.embedder.embed(query)
+        # 确保查询向量维度正确
+        if len(query_vector) != self.embedder.dimension:
+            print(f"警告: 查询向量维度不匹配，期望 {self.embedder.dimension}，实际 {len(query_vector)}")
+            # 如果维度不匹配，使用零向量填充或截断
+            if len(query_vector) < self.embedder.dimension:
+                query_vector.extend([0.0] * (self.embedder.dimension - len(query_vector)))
+            else:
+                query_vector = query_vector[:self.embedder.dimension]
         
         # 执行搜索
         distances, indices = self.index.search(
