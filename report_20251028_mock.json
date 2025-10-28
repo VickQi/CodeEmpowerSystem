@@ -16,7 +16,8 @@
         "answer": "库存周转率的计算公式为销售成本除以平均库存，其中平均库存等于期初库存与期末库存的平均值。",
         "confidence": 0.9,
         "citations": [
-          "[test_data/LogisticsAPI.md#unknown]"
+          "[test_data/LogisticsAPI.md#unknown]",
+          "[test_data/WMSInventoryManagement.java#unknown]"
         ],
         "key_points": [
           "库存周转率的计算公式为销售成本除以平均库存，其中平均库存等于期初库存与期末库存的平均值"
@@ -86,7 +87,9 @@
         "answer": "订单履约率是衡量订单按时完成的比例，计算公式为：按时完成的订单数 / 总订单数。",
         "confidence": 0.9,
         "citations": [
-          "[test_data/LogisticsAPI.md#unknown]"
+          "[test_data/LogisticsAPI.md#unknown]",
+          "[test_data/OMSOrderManagement.java#unknown]",
+          "[test_data/WMSInventoryManagement.java#unknown]"
         ],
         "key_points": [
           "订单履约率是衡量订单按时完成的比例，计算公式为：按时完成的订单数 / 总订单数"

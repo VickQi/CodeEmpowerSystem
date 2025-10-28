@@ -3,7 +3,7 @@
     "total_cases": 4,
     "passed_cases": 4,
     "pass_rate": 1.0,
-    "average_relevance": 0.9543628471772772,
+    "average_relevance": 0.961352101807041,
     "average_citation_accuracy": 1.0,
     "average_completeness": 1.0,
     "average_metrics_consistency": 1.0
@@ -13,20 +13,20 @@
       "question": "库存周转率的计算公式是什么？",
       "expected_answer": "库存周转率 = 销售成本 / 平均库存。平均库存 = (期初库存 + 期末库存) / 2。",
       "actual_response": {
-        "answer": "库存周转率的计算公式为销售成本除以平均库存，其中平均库存等于期初库存与期末库存的平均值。",
+        "answer": "库存周转率的计算公式是销售成本除以平均库存，其中平均库存等于（期初库存 + 期末库存）/ 2。",
         "confidence": 0.9,
         "citations": [
           "[test_data/LogisticsAPI.md#unknown]",
           "[test_data/WMSInventoryManagement.java#unknown]"
         ],
         "key_points": [
-          "库存周转率的计算公式为销售成本除以平均库存，其中平均库存等于期初库存与期末库存的平均值"
+          "库存周转率的计算公式是销售成本除以平均库存，其中平均库存等于（期初库存 + 期末库存）/ 2"
         ],
         "notes": "来自大模型的直接响应",
         "used_metrics": []
       },
       "category": "inventory",
-      "relevance": 0.9547311438877688,
+      "relevance": 0.958840231482789,
       "citation_accuracy": 1.0,
       "completeness": 1.0,
       "metrics_consistency": 1.0,
@@ -36,7 +36,7 @@
       "question": "配送路线优化算法在哪？",
       "expected_answer": "配送路线优化算法位于test_data/TMSTransportationPlanner.py文件中的optimize_delivery_route函数",
       "actual_response": {
-        "answer": "配送路线优化算法在TMSTransportationPlanner.py文件的optimize_delivery_route方法中实现，该方法使用贪心算法进行运输单与车辆的分配优化。",
+        "answer": "配送路线优化算法在TMSTransportationPlanner.py文件中的optimize_delivery_route方法实现。",
         "confidence": 0.9,
         "citations": [
           "[test_data/LogisticsAPI.md#unknown]",
@@ -44,13 +44,13 @@
           "[test_data/HaizhiLogistics.pdf#unknown]"
         ],
         "key_points": [
-          "配送路线优化算法在TMSTransportationPlanner.py文件的optimize_delivery_route方法中实现，该方法使用贪心算法进行运输单与车辆的分配优化"
+          "配送路线优化算法在TMSTransportationPlanner.py文件中的optimize_delivery_route方法实现"
         ],
         "notes": "来自大模型的直接响应",
         "used_metrics": []
       },
       "category": "transportation",
-      "relevance": 0.9485244462421093,
+      "relevance": 0.9715708693951515,
       "citation_accuracy": 1.0,
       "completeness": 1.0,
       "metrics_consistency": 1.0,
@@ -60,7 +60,7 @@
       "question": "海智物流系统的分拣流程是怎样的？",
       "expected_answer": "海智物流系统的分拣流程包括接收包裹、分拣包裹、路由包裹和装车等步骤。",
       "actual_response": {
-        "answer": "海智物流的分拣流程由“海智大脑”智能调度系统自动执行。系统根据包裹的尺寸、重量、目的地等信息，通过AI算法匹配预设的分拣规则，动态确定目标滑槽（target_chute）。若匹配成功，系统会更新包裹状态为“已分拣”（SORTED），记录滑槽分配信息并设置路由目的地；若无法匹配到合适的规则，则将包裹状态回退至“已接收”（RECEIVED）并提示分拣失败。整个过程实时反馈处理结果，确保分拣准确性与效率。",
+        "answer": "海智物流系统的分拣流程基于“海智大脑”智能调度系统自动执行。系统首先通过AI算法和大数据分析应用预设分拣规则（如货物属性、目的地等）匹配包裹到目标滑槽。如果匹配成功，系统会更新包裹状态为已分拣，分配具体滑槽，并设置路由目的地；如果匹配失败（无法找到合适规则），系统将包裹状态回退为已接收状态，并记录错误以便后续处理。整个过程通过实时规则匹配和状态管理确保分拣效率和准确性。",
         "confidence": 0.9,
         "citations": [
           "[test_data/HaizhiLogistics.pdf#unknown]",
@@ -68,17 +68,17 @@
           "[test_data/SMSSortingManager.py#unknown]"
         ],
         "key_points": [
-          "海智物流的分拣流程由“海智大脑”智能调度系统自动执行",
-          "系统根据包裹的尺寸、重量、目的地等信息，通过AI算法匹配预设的分拣规则，动态确定目标滑槽（target_chute）",
-          "若匹配成功，系统会更新包裹状态为“已分拣”（SORTED），记录滑槽分配信息并设置路由目的地",
-          "若无法匹配到合适的规则，则将包裹状态回退至“已接收”（RECEIVED）并提示分拣失败",
-          "整个过程实时反馈处理结果，确保分拣准确性与效率"
+          "海智物流系统的分拣流程基于“海智大脑”智能调度系统自动执行",
+          "系统首先通过AI算法和大数据分析应用预设分拣规则（如货物属性、目的地等）匹配包裹到目标滑槽",
+          "如果匹配成功，系统会更新包裹状态为已分拣，分配具体滑槽，并设置路由目的地",
+          "如果匹配失败（无法找到合适规则），系统将包裹状态回退为已接收状态，并记录错误以便后续处理",
+          "整个过程通过实时规则匹配和状态管理确保分拣效率和准确性"
         ],
         "notes": "来自大模型的直接响应",
         "used_metrics": []
       },
       "category": "sorting",
-      "relevance": 0.9141957985792305,
+      "relevance": 0.9149973063502234,
       "citation_accuracy": 1.0,
       "completeness": 1.0,
       "metrics_consistency": 1.0,
