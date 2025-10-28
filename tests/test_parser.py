@@ -103,7 +103,7 @@ def test_fallback_handling():
     
     # 验证结果
     assert result['answer'] == raw_response
-    assert result['confidence'] == 0.5  # 修改为0.5，与解析器中的实现一致
+    assert result['confidence'] == 0.5  # 与解析器中的实现一致
     assert result['notes'] == '原始响应不是有效的JSON格式'
     
     print("✓ 降级处理测试通过")
@@ -173,7 +173,7 @@ def test_structured_response_format():
         "citations": ["[test.txt#sec1]"],
         "notes": "测试注释",
         "confidence": 0.95,
-        "used_metrics": [{"name": "metric1", "value": "值1", "unit": "单位1"}]
+        "used_metrics": [{"name": "metric1", "value": "값1", "unit": "단위1"}]
     })
     
     retrieved_docs = [
