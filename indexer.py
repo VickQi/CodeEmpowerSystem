@@ -6,6 +6,10 @@ from typing import List, Any
 from openai import OpenAI
 from chunker import KnowledgeChunk
 from settings import Settings
+import logging
+
+# 获取日志记录器
+logger = logging.getLogger(__name__)
 
 class QwenEmbedder:
     """使用Qwen大模型进行文本嵌入"""
@@ -27,7 +31,7 @@ class QwenEmbedder:
             )
             return response.data[0].embedding
         except Exception as e:
-            print(f"嵌入生成失败: {e}")
+            logger.error(f"嵌入生成失败: {e}")
             # 返回零向量作为后备
             return [0.0] * self.dimension
 
@@ -41,6 +45,8 @@ class VectorIndexer:
     
     def build_index(self, chunks: List[KnowledgeChunk]) -> None:
         """构建向量索引"""
+        logger.info(f"开始构建向量索引，包含 {len(chunks)} 个知识块")
+        
         # 仅CPU模式
         self.index = faiss.IndexFlatL2(self.embedder.dimension)
         
@@ -50,7 +56,7 @@ class VectorIndexer:
             vector = self.embedder.embed(chunk.content)
             # 确保向量维度正确
             if len(vector) != self.embedder.dimension:
-                print(f"警告: 向量维度不匹配，期望 {self.embedder.dimension}，实际 {len(vector)}")
+                logger.warning(f"警告: 向量维度不匹配，期望 {self.embedder.dimension}，实际 {len(vector)}")
                 # 如果维度不匹配，使用零向量填充或截断
                 if len(vector) < self.embedder.dimension:
                     vector.extend([0.0] * (self.embedder.dimension - len(vector)))
@@ -62,9 +68,11 @@ class VectorIndexer:
         # 添加到索引
         if vectors:
             self.index.add(np.array(vectors).astype('float32'))
+            logger.info(f"成功添加 {len(vectors)} 个向量到索引")
         
         # 保存索引
         self.save_index()
+        logger.info(f"索引构建完成，总共 {self.index.ntotal} 个向量")
     
     def save_index(self) -> None:
         """持久化索引"""
@@ -72,6 +80,7 @@ class VectorIndexer:
             faiss.write_index(self.index, self.index_path)
             with open(self.index_path + '.ids', 'w') as f:
                 json.dump(self.doc_ids, f)
+            logger.debug(f"索引已保存到 {self.index_path}")
     
     def load_index(self) -> None:
         """加载索引"""
@@ -79,9 +88,14 @@ class VectorIndexer:
             self.index = faiss.read_index(self.index_path)
             with open(self.index_path + '.ids', 'r') as f:
                 self.doc_ids = json.load(f)
+            logger.info(f"索引加载成功，包含 {self.index.ntotal} 个向量")
+        else:
+            logger.warning(f"索引文件不存在: {self.index_path}")
     
     def add_chunks(self, chunks: List[KnowledgeChunk]) -> None:
         """增量更新索引"""
+        logger.info(f"开始增量更新索引，添加 {len(chunks)} 个新块")
+        
         if self.index is None:
             # 如果索引不存在，则创建新索引
             self.build_index(chunks)
@@ -93,7 +107,7 @@ class VectorIndexer:
                 vector = self.embedder.embed(chunk.content)
                 # 确保向量维度正确
                 if len(vector) != self.embedder.dimension:
-                    print(f"警告: 向量维度不匹配，期望 {self.embedder.dimension}，实际 {len(vector)}")
+                    logger.warning(f"警告: 向量维度不匹配，期望 {self.embedder.dimension}，实际 {len(vector)}")
                     # 如果维度不匹配，使用零向量填充或截断
                     if len(vector) < self.embedder.dimension:
                         vector.extend([0.0] * (self.embedder.dimension - len(vector)))
@@ -106,23 +120,27 @@ class VectorIndexer:
             if vectors:
                 self.index.add(np.array(vectors).astype('float32'))
                 self.doc_ids.extend(new_doc_ids)
+                logger.info(f"成功添加 {len(vectors)} 个向量到现有索引")
             
             # 保存更新后的索引
             self.save_index()
     
     def search(self, query: str, k: int = 5) -> List[dict]:
         """搜索相似向量"""
+        logger.debug(f"开始向量搜索，查询: \"{query}\", k={k}")
+        
         if self.index is None:
             self.load_index()
             
         if self.index is None:
+            logger.warning("索引未加载，返回空结果")
             return []
         
         # 生成查询向量
         query_vector = self.embedder.embed(query)
         # 确保查询向量维度正确
         if len(query_vector) != self.embedder.dimension:
-            print(f"警告: 查询向量维度不匹配，期望 {self.embedder.dimension}，实际 {len(query_vector)}")
+            logger.warning(f"警告: 查询向量维度不匹配，期望 {self.embedder.dimension}，实际 {len(query_vector)}")
             # 如果维度不匹配，使用零向量填充或截断
             if len(query_vector) < self.embedder.dimension:
                 query_vector.extend([0.0] * (self.embedder.dimension - len(query_vector)))
@@ -145,4 +163,5 @@ class VectorIndexer:
                     'score': 1.0 / (1.0 + float(distance))  # 转换为相似度得分
                 })
         
+        logger.debug(f"向量搜索返回 {len(results)} 个结果")
         return results
