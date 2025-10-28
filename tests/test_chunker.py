@@ -5,12 +5,38 @@ SemanticChunker测试文件
 
 import sys
 from pathlib import Path
+import logging
+import os
 
 # 添加项目根目录到Python路径
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
+# 确保测试日志目录存在
+os.makedirs('tests/logs', exist_ok=True)
+
 from chunker import SemanticChunker, KnowledgeChunk
+
+def setup_test_logger():
+    """设置测试日志"""
+    # 创建chunker日志记录器
+    logger = logging.getLogger('chunker')
+    logger.setLevel(logging.INFO)
+    
+    # 避免重复添加处理器
+    if not logger.handlers:
+        # 创建文件处理器
+        handler = logging.FileHandler('tests/logs/chunker.log', encoding='utf-8')
+        formatter = logging.Formatter('[%(asctime)s] [%(levelname)s] [%(module)s] %(message)s')
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+        
+        # 添加控制台处理器
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(formatter)
+        logger.addHandler(console_handler)
+    
+    return logger
 
 def test_python_code_splitting():
     """测试Python代码按函数边界切分"""
@@ -44,6 +70,7 @@ if __name__ == "__main__":
     assert all(isinstance(chunk, KnowledgeChunk) for chunk in chunks), "所有项都应该是KnowledgeChunk实例"
     assert all(chunk.metadata["type"] == "code" for chunk in chunks), "所有块的类型都应该是code"
     assert all(chunk.metadata["language"] == "python" for chunk in chunks), "所有块的语言都应该是python"
+    assert all("chunk_id" in chunk.metadata for chunk in chunks), "所有块都应该有chunk_id"
     print("✓ Python代码切分测试通过")
 
 def test_java_code_splitting():
@@ -73,6 +100,7 @@ public class TestClass {
     assert all(isinstance(chunk, KnowledgeChunk) for chunk in chunks), "所有项都应该是KnowledgeChunk实例"
     assert all(chunk.metadata["type"] == "code" for chunk in chunks), "所有块的类型都应该是code"
     assert all(chunk.metadata["language"] == "java" for chunk in chunks), "所有块的语言都应该是java"
+    assert all("chunk_id" in chunk.metadata for chunk in chunks), "所有块都应该有chunk_id"
     print("✓ Java代码切分测试通过")
 
 def test_document_splitting():
@@ -105,6 +133,8 @@ def test_document_splitting():
     assert len(chunks) >= 1, "应该至少生成一个块"
     assert all(isinstance(chunk, KnowledgeChunk) for chunk in chunks), "所有项都应该是KnowledgeChunk实例"
     assert all(chunk.metadata["type"] == "document" for chunk in chunks), "所有块的类型都应该是document"
+    assert all("chunk_id" in chunk.metadata for chunk in chunks), "所有块都应该有chunk_id"
+    assert any("section" in chunk.metadata and chunk.metadata["section"] for chunk in chunks), "至少应该有一个块包含章节信息"
     print("✓ 文档切分测试通过")
 
 def test_large_content_splitting():
@@ -117,7 +147,39 @@ def test_large_content_splitting():
     chunks = chunker.split(large_text, "test_source", "text")
     assert len(chunks) >= 1, "应该生成多个块"
     assert all(isinstance(chunk, KnowledgeChunk) for chunk in chunks), "所有项都应该是KnowledgeChunk实例"
+    
+    # 检查重叠（检查相邻块是否有相似内容）
+    if len(chunks) >= 2:
+        # 获取第一个块的末尾部分（应该与第二个块的开头部分重叠）
+        overlap_size = min(20, len(chunks[0].content), len(chunks[1].content))
+        first_chunk_end = chunks[0].content[-overlap_size:]
+        second_chunk_start = chunks[1].content[:overlap_size]
+        
+        # 验证重叠部分是否相同
+        assert first_chunk_end == second_chunk_start, f"相邻块应该有{overlap_size}字符的重叠"
+        print(f"✓ 验证到相邻块之间有{overlap_size}字符的重叠")
+        print(f"  重叠内容: {first_chunk_end}")
     print("✓ 大内容切分测试通过")
+
+def test_overlap_functionality():
+    """测试重叠功能是否正确实现"""
+    chunker = SemanticChunker(chunk_size=100, overlap=50)
+    
+    # 创建足够长的文本以生成多个块
+    long_text = "0123456789" * 50  # 500个字符
+    
+    chunks = chunker.split(long_text, "test_source", "text")
+    assert len(chunks) >= 2, "应该生成至少两个块"
+    
+    # 验证重叠：第二个块的前50个字符应该与第一个块的后50个字符相同
+    if len(chunks) >= 2:
+        first_chunk_end = chunks[0].content[-50:]
+        second_chunk_start = chunks[1].content[:50]
+        assert first_chunk_end == second_chunk_start, "相邻块之间应该有50字符的重叠"
+        print(f"✓ 验证到相邻块之间有50字符的重叠")
+        print(f"  重叠内容: {first_chunk_end}")
+    
+    print("✓ 重叠功能测试通过")
 
 def test_empty_content():
     """测试空内容处理"""
@@ -139,12 +201,13 @@ def test_chunk_size_limit():
     chunks = chunker.split(long_paragraph, "test_source", "text")
     # 检查是否有块生成
     assert len(chunks) >= 1, "应该生成至少一个块"
-    # 检查大部分块是否在合理大小范围内（允许少数超出以确保内容完整性）
-    oversized_chunks = [chunk for chunk in chunks if len(chunk.content) > chunker.chunk_size + 50]
-    assert len(oversized_chunks) <= len(chunks) * 0.3, "超出大小限制的块应该只占少数"
+    # 检查所有块的大小是否符合要求（允许少量超出以确保内容完整性）
+    valid_size_chunks = [chunk for chunk in chunks if len(chunk.content) <= chunker.chunk_size + 20]
+    assert len(valid_size_chunks) >= len(chunks) * 0.8, "大部分块应该在大小限制内"
     print("✓ 块大小限制测试通过")
 
 if __name__ == "__main__":
+    setup_test_logger()
     print("开始测试SemanticChunker...")
     print("-" * 30)
     
@@ -152,6 +215,7 @@ if __name__ == "__main__":
     test_java_code_splitting()
     test_document_splitting()
     test_large_content_splitting()
+    test_overlap_functionality()
     test_empty_content()
     test_chunk_size_limit()
     
